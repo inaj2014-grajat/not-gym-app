@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NotGym Admin</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #FFFAFA; color: #1a2535; min-height: 100vh; }
+
+  /* ── LOGIN SCREEN ── */
+  #login-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; gap: 24px; background: #000080;
+  }
+  .logo { font-size: 2rem; font-weight: 800; color: #ADD8E6; letter-spacing: -1px; }
+  .logo span { color: rgba(173,216,230,0.6); font-size: 1rem; font-weight: 400; display: block; margin-top: 4px; }
+  .pin-box {
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(173,216,230,0.25); border-radius: 16px;
+    padding: 36px 40px; width: 340px; display: flex; flex-direction: column; gap: 16px;
+  }
+  .pin-box h2 { font-size: 1.1rem; color: #1a2535; text-align: center; }
+  .pin-input {
+    background: #f0f4f8; border: 1px solid rgba(109,129,150,0.2); border-radius: 10px;
+    color: #1a2535; font-size: 1.4rem; letter-spacing: 8px; text-align: center;
+    padding: 14px; width: 100%; outline: none;
+    transition: border-color 0.2s;
+  }
+  .pin-input:focus { border-color: #00c2b8; }
+  .btn-primary {
+    background: #000080; color: #ffffff; border: none; border-radius: 10px;
+    font-size: 1rem; font-weight: 700; padding: 14px; cursor: pointer; width: 100%;
+    transition: background 0.2s;
+  }
+  .btn-primary:hover { background: #000066; }
+  .btn-danger {
+    background: #e53e3e; color: #fff; border: none; border-radius: 10px;
+    font-size: 0.95rem; font-weight: 700; padding: 12px 20px; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-danger:hover { background: #c53030; }
+  .btn-secondary {
+    background: #2d3748; color: #1a2535; border: none; border-radius: 10px;
+    font-size: 0.95rem; font-weight: 600; padding: 12px 20px; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-secondary:hover { background: #e2e8ef; }
+  .btn-green {
+    background: #38a169; color: #fff; border: none; border-radius: 10px;
+    font-size: 0.95rem; font-weight: 700; padding: 12px 20px; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-green:hover { background: #2f855a; }
+  .error-msg { color: #fc8181; font-size: 0.85rem; text-align: center; min-height: 20px; }
+
+  /* ── MAIN ADMIN UI ── */
+  #admin-ui { display: none; }
+  .topbar {
+    background: #ffffff; border-bottom: 1px solid rgba(109,129,150,0.15);
+    padding: 16px 32px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar-logo { font-size: 1.4rem; font-weight: 800; color: #000080; }
+  .topbar-logo span { color: #6D8196; font-size: 0.85rem; font-weight: 400; margin-left: 10px; }
+  .topbar-right { display: flex; gap: 12px; align-items: center; }
+
+  .tabs {
+    display: flex; gap: 0; background: #1a1d27;
+    border-bottom: 1px solid #2d3748; padding: 0 32px;
+  }
+  .tab {
+    padding: 14px 24px; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+    color: #6D8196; border-bottom: 3px solid transparent; color: #6D8196; transition: all 0.2s;
+  }
+  .tab:hover { color: #1a2535; }
+  .tab.active { color: #000080; border-bottom-color: #000080; }
+
+  .tab-content { display: none; padding: 32px; max-width: 1100px; margin: 0 auto; }
+  .tab-content.active { display: block; }
+
+  /* ── LEADERBOARD ── */
+  .filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; align-items: center; }
+  .filter-select {
+    background: #1a1d27; border: 1px solid #3d4a5c; color: #1a2535;
+    border-radius: 8px; padding: 8px 14px; font-size: 0.9rem; cursor: pointer; outline: none;
+  }
+  .filter-select:focus { border-color: #00c2b8; }
+  .filter-label { font-size: 0.85rem; color: #6D8196; }
+
+  .leaderboard-grid { display: grid; gap: 16px; }
+  .lb-table { width: 100%; border-collapse: collapse; }
+  .lb-table th {
+    background: #1a1d27; color: #6D8196; font-size: 0.8rem; text-transform: uppercase;
+    letter-spacing: 0.05em; padding: 12px 16px; text-align: left; border-bottom: 1px solid #2d3748;
+  }
+  .lb-table th.sortable { cursor: pointer; user-select: none; }
+  .lb-table th.sortable:hover { color: #00c2b8; }
+  .lb-table td { padding: 12px 16px; border-bottom: 1px solid #1a1d27; font-size: 0.9rem; }
+  .lb-table tr:hover td { background: #1a1d27; }
+  .rank-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%; font-weight: 700; font-size: 0.85rem;
+  }
+  .rank-1 { background: #d4af37; color: #000; }
+  .rank-2 { background: #a8a9ad; color: #000; }
+  .rank-3 { background: #cd7f32; color: #000; }
+  .rank-n { background: #2d3748; color: #1a2535; }
+  .group-tag {
+    background: #ADD8E6; color: #000080; font-size: 0.75rem;
+    padding: 2px 8px; border-radius: 12px; font-weight: 600;
+  }
+
+  /* ── PROFILES ── */
+  .profiles-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .profiles-header h2 { font-size: 1.1rem; color: #1a2535; }
+  .profile-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+  .profile-row {
+    display: flex; gap: 10px; align-items: center;
+    background: #1a1d27; border-radius: 10px; padding: 12px 16px;
+  }
+  .profile-row input {
+    background: #f0f4f8; border: 1px solid rgba(109,129,150,0.2); color: #1a2535;
+    border-radius: 8px; padding: 8px 12px; font-size: 0.9rem; flex: 1; outline: none;
+    transition: border-color 0.2s;
+  }
+  .profile-row input:focus { border-color: #00c2b8; }
+  .profile-row input::placeholder { color: #4a5568; }
+  .btn-icon {
+    background: #2d3748; border: none; color: #fc8181; border-radius: 8px;
+    width: 36px; height: 36px; cursor: pointer; font-size: 1rem; display: flex;
+    align-items: center; justify-content: center; transition: background 0.2s; flex-shrink: 0;
+  }
+  .btn-icon:hover { background: #e2e8ef; }
+  .add-profile-btn {
+    background: #1a1d27; border: 1px dashed #3d4a5c; color: #6D8196;
+    border-radius: 10px; padding: 12px; width: 100%; cursor: pointer;
+    font-size: 0.9rem; transition: all 0.2s; text-align: center;
+  }
+  .add-profile-btn:hover { border-color: #00c2b8; color: #00c2b8; }
+  .save-bar {
+    display: flex; gap: 12px; align-items: center; margin-top: 16px;
+    padding-top: 16px; border-top: 1px solid #2d3748;
+  }
+
+  /* ── DANGER ZONE ── */
+  .danger-card {
+    background: #ffffff; border: 1px solid rgba(109,129,150,0.2); border-radius: 16px;
+    padding: 28px; margin-bottom: 20px;
+  }
+  .danger-card h3 { font-size: 1rem; color: #1a2535; margin-bottom: 8px; }
+  .danger-card p { font-size: 0.85rem; color: #6D8196; margin-bottom: 20px; line-height: 1.6; }
+  .danger-form { display: flex; flex-direction: column; gap: 12px; max-width: 400px; }
+  .danger-form input {
+    background: #f0f4f8; border: 1px solid rgba(109,129,150,0.2); color: #1a2535;
+    border-radius: 8px; padding: 10px 14px; font-size: 0.9rem; outline: none;
+    transition: border-color 0.2s;
+  }
+  .danger-form input:focus { border-color: #e53e3e; }
+  .section-title { font-size: 1.3rem; font-weight: 700; color: #1a2535; margin-bottom: 6px; }
+  .section-sub { font-size: 0.85rem; color: #6D8196; margin-bottom: 24px; }
+
+  /* ── CHANGE PIN ── */
+  .pin-change-form { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
+  .pin-change-form input {
+    background: #f0f4f8; border: 1px solid rgba(109,129,150,0.2); color: #1a2535;
+    border-radius: 8px; padding: 10px 14px; font-size: 0.9rem; outline: none;
+    transition: border-color 0.2s;
+  }
+  .pin-change-form input:focus { border-color: #00c2b8; }
+  .form-label { font-size: 0.8rem; color: #6D8196; margin-bottom: 2px; }
+
+  .toast {
+    position: fixed; bottom: 32px; right: 32px;
+    background: #ffffff; border: 1px solid rgba(109,129,150,0.15); border-radius: 12px;
+    padding: 14px 20px; font-size: 0.9rem; color: #1a2535;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 999;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: #38a169; color: #68d391; }
+  .toast.error { border-color: #e53e3e; color: #fc8181; }
+
+  .stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: #ffffff; border: 1px solid rgba(109,129,150,0.15); border-radius: 12px; padding: 20px; }
+  .stat-card .val { font-size: 2rem; font-weight: 800; color: #000080; }
+  .stat-card .lbl { font-size: 0.8rem; color: #6D8196; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="logo">NotGym <span>Admin Panel</span></div>
+  <div class="pin-box">
+    <h2>Enter Admin PIN</h2>
+    <input type="password" class="pin-input" id="pin-input" maxlength="8" placeholder="••••" inputmode="numeric" />
+    <button class="btn-primary" onclick="doLogin()">Unlock</button>
+    <div class="error-msg" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ADMIN UI -->
+<div id="admin-ui">
+  <div class="topbar">
+    <div class="topbar-logo">NotGym <span>Admin Panel</span></div>
+    <div class="topbar-right">
+      <a href="/" style="color:#6b7280;font-size:0.85rem;text-decoration:none;">← Back to App</a>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('leaderboard')">🏆 Leaderboard</div>
+    <div class="tab" onclick="showTab('profiles')">👥 Student Profiles</div>
+    <div class="tab" onclick="showTab('settings')">⚙️ Settings</div>
+  </div>
+
+  <!-- LEADERBOARD TAB -->
+  <div class="tab-content active" id="tab-leaderboard">
+    <div class="section-title">Leaderboard</div>
+    <div class="section-sub">Rankings across all students. Click a column header to sort.</div>
+
+    <div class="filters">
+      <div>
+        <div class="filter-label">Period</div>
+        <select class="filter-select" id="filter-period" onchange="loadLeaderboard()">
+          <option value="all">All Time</option>
+          <option value="month">This Month</option>
+          <option value="week">This Week</option>
+        </select>
+      </div>
+      <div>
+        <div class="filter-label">Group</div>
+        <select class="filter-select" id="filter-group" onchange="loadLeaderboard()">
+          <option value="all">All Groups</option>
+        </select>
+      </div>
+      <div>
+        <div class="filter-label">Sort By</div>
+        <select class="filter-select" id="sort-by" onchange="renderLeaderboard()">
+          <option value="sessions">Most Sessions</option>
+          <option value="best_plank">Best Plank (sec)</option>
+          <option value="best_squats">Best Squats (reps)</option>
+          <option value="best_pushups">Best Push-Ups (reps)</option>
+          <option value="best_mountain_climber">Best Mountain Climber</option>
+          <option value="best_jumping_jack">Best Jumping Jacks</option>
+        </select>
+      </div>
+      <div style="margin-top:18px">
+        <button class="btn-secondary" onclick="exportCSV()" style="padding:8px 16px;font-size:0.85rem;">⬇ Export CSV</button>
+      </div>
+    </div>
+
+    <div class="stat-cards" id="stat-cards"></div>
+
+    <table class="lb-table" id="lb-table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Name</th>
+          <th>Group</th>
+          <th class="sortable" onclick="setSortBy('sessions')">Sessions</th>
+          <th class="sortable" onclick="setSortBy('best_plank')">Plank (s)</th>
+          <th class="sortable" onclick="setSortBy('best_squats')">Squats</th>
+          <th class="sortable" onclick="setSortBy('best_pushups')">Push-Ups</th>
+          <th class="sortable" onclick="setSortBy('best_mountain_climber')">Mtn Climber</th>
+          <th class="sortable" onclick="setSortBy('best_jumping_jack')">Jumping Jacks</th>
+        </tr>
+      </thead>
+      <tbody id="lb-body"></tbody>
+    </table>
+  </div>
+
+  <!-- PROFILES TAB -->
+  <div class="tab-content" id="tab-profiles">
+    <div class="profiles-header">
+      <div>
+        <div class="section-title">Student Profiles</div>
+        <div class="section-sub">Add students here. They will appear in the dropdown on the main screen.</div>
+      </div>
+    </div>
+    <div class="profile-list" id="profile-list"></div>
+    <button class="add-profile-btn" onclick="addProfileRow()">+ Add Student</button>
+    <div class="save-bar">
+      <button class="btn-green" onclick="saveProfiles()">Save Profiles</button>
+      <span id="profiles-status" style="font-size:0.85rem;color:#6b7280;"></span>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div class="tab-content" id="tab-settings">
+    <div class="section-title">Settings</div>
+    <div class="section-sub">Manage your admin PIN and data.</div>
+
+    <!-- Change PIN -->
+    <div class="danger-card" style="margin-bottom:20px;">
+      <h3>🔐 Change Admin PIN</h3>
+      <p>Update the PIN required to access this admin panel. Minimum 4 digits.</p>
+      <div class="pin-change-form">
+        <div>
+          <div class="form-label">Current PIN</div>
+          <input type="password" id="current-pin" placeholder="Current PIN" inputmode="numeric" maxlength="8" />
+        </div>
+        <div>
+          <div class="form-label">New PIN</div>
+          <input type="password" id="new-pin" placeholder="New PIN (min 4 digits)" inputmode="numeric" maxlength="8" />
+        </div>
+        <div>
+          <div class="form-label">Confirm New PIN</div>
+          <input type="password" id="confirm-pin" placeholder="Confirm new PIN" inputmode="numeric" maxlength="8" />
+        </div>
+        <button class="btn-primary" onclick="changePin()" style="margin-top:4px;">Update PIN</button>
+        <div class="error-msg" id="pin-change-error"></div>
+      </div>
+    </div>
+
+    <!-- Delete History -->
+    <div class="danger-card" style="border-color:#742a2a;">
+      <h3 style="color:#fc8181;">⚠️ Delete All Workout History</h3>
+      <p>This permanently deletes all session logs. This cannot be undone. All leaderboard data will be lost.</p>
+      <div class="danger-form">
+        <div>
+          <div class="form-label">Admin PIN</div>
+          <input type="password" id="delete-pin" placeholder="Enter PIN" inputmode="numeric" maxlength="8" />
+        </div>
+        <div>
+          <div class="form-label">Type DELETE to confirm</div>
+          <input type="text" id="delete-confirm" placeholder='Type DELETE here' autocomplete="off" />
+        </div>
+        <button class="btn-danger" onclick="deleteHistory()">Delete All History</button>
+        <div class="error-msg" id="delete-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let sessionPin = '';
+  let lbData = [];
+
+  // ── LOGIN ──
+  document.getElementById('pin-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  async function doLogin() {
+    const pin = document.getElementById('pin-input').value.trim();
+    const err = document.getElementById('login-error');
+    err.textContent = '';
+    try {
+      const res = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({pin})
+      });
+      const data = await res.json();
+      if (data.ok) {
+        sessionPin = pin;
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('admin-ui').style.display = 'block';
+        loadLeaderboard();
+        loadProfiles();
+      } else {
+        err.textContent = 'Incorrect PIN. Try again.';
+        document.getElementById('pin-input').value = '';
+      }
+    } catch(e) {
+      err.textContent = 'Connection error.';
+    }
+  }
+
+  // ── TABS ──
+  function showTab(name) {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    const tabs = ['leaderboard','profiles','settings'];
+    const idx = tabs.indexOf(name);
+    document.querySelectorAll('.tab')[idx].classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  // ── LEADERBOARD ──
+  async function loadLeaderboard() {
+    const period = document.getElementById('filter-period').value;
+    const group  = document.getElementById('filter-group').value;
+    try {
+      const res = await fetch(`/api/admin/leaderboard?pin=${sessionPin}&period=${period}&group=${group}`);
+      const data = await res.json();
+      if (!data.ok) return;
+      lbData = data.leaderboard;
+
+      // Populate group dropdown
+      const gSel = document.getElementById('filter-group');
+      const curGroup = gSel.value;
+      gSel.innerHTML = '<option value="all">All Groups</option>';
+      data.groups.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g; opt.textContent = g;
+        if (g === curGroup) opt.selected = true;
+        gSel.appendChild(opt);
+      });
+
+      renderLeaderboard();
+    } catch(e) { showToast('Failed to load leaderboard', 'error'); }
+  }
+
+  function setSortBy(val) {
+    document.getElementById('sort-by').value = val;
+    renderLeaderboard();
+  }
+
+  function renderLeaderboard() {
+    const sortBy = document.getElementById('sort-by').value;
+    const sorted = [...lbData].sort((a,b) => (b[sortBy]||0) - (a[sortBy]||0));
+
+    // Stat cards
+    const total = sorted.length;
+    const totalSessions = sorted.reduce((s,r) => s + r.sessions, 0);
+    const bestPlank = sorted.reduce((m,r) => Math.max(m, r.best_plank), 0);
+    const bestSquats = sorted.reduce((m,r) => Math.max(m, r.best_squats), 0);
+    document.getElementById('stat-cards').innerHTML = `
+      <div class="stat-card"><div class="val">${total}</div><div class="lbl">Students</div></div>
+      <div class="stat-card"><div class="val">${totalSessions}</div><div class="lbl">Total Sessions</div></div>
+      <div class="stat-card"><div class="val">${bestPlank.toFixed(1)}s</div><div class="lbl">Best Plank</div></div>
+      <div class="stat-card"><div class="val">${bestSquats}</div><div class="lbl">Best Squats</div></div>
+    `;
+
+    // Table rows
+    const tbody = document.getElementById('lb-body');
+    tbody.innerHTML = '';
+    sorted.forEach((row, i) => {
+      const rank = i + 1;
+      const badgeClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-n';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="rank-badge ${badgeClass}">${rank}</span></td>
+        <td style="font-weight:600">${esc(row.name)}</td>
+        <td>${row.group ? `<span class="group-tag">${esc(row.group)}</span>` : '—'}</td>
+        <td>${row.sessions}</td>
+        <td>${row.best_plank > 0 ? row.best_plank.toFixed(1) + 's' : '—'}</td>
+        <td>${row.best_squats || '—'}</td>
+        <td>${row.best_pushups || '—'}</td>
+        <td>${row.best_mountain_climber || '—'}</td>
+        <td>${row.best_jumping_jack || '—'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    if (sorted.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#6b7280;padding:32px;">No data for this period</td></tr>';
+    }
+  }
+
+  // ── PROFILES ──
+  let profiles = [];
+
+  async function loadProfiles() {
+    try {
+      const res = await fetch(`/api/admin/profiles?pin=${sessionPin}`);
+      const data = await res.json();
+      if (!data.ok) return;
+      profiles = data.profiles;
+      renderProfiles();
+    } catch(e) {}
+  }
+
+  function renderProfiles() {
+    const list = document.getElementById('profile-list');
+    list.innerHTML = '';
+    profiles.forEach((p, i) => {
+      const row = document.createElement('div');
+      row.className = 'profile-row';
+      row.innerHTML = `
+        <input type="text" placeholder="Student name" value="${esc(p.name)}" 
+               oninput="profiles[${i}].name=this.value" />
+        <input type="text" placeholder="Group (e.g. Grade 6A)" value="${esc(p.group||'')}" 
+               style="max-width:200px;" oninput="profiles[${i}].group=this.value" />
+        <button class="btn-icon" onclick="removeProfile(${i})" title="Remove">✕</button>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  function addProfileRow() {
+    profiles.push({name: '', group: ''});
+    renderProfiles();
+    // Focus the last name input
+    const inputs = document.querySelectorAll('#profile-list .profile-row input');
+    if (inputs.length) inputs[inputs.length - 2].focus();
+  }
+
+  function removeProfile(i) {
+    profiles.splice(i, 1);
+    renderProfiles();
+  }
+
+  async function saveProfiles() {
+    const valid = profiles.filter(p => p.name.trim());
+    try {
+      const res = await fetch('/api/admin/profiles', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({pin: sessionPin, profiles: valid})
+      });
+      const data = await res.json();
+      if (data.ok) {
+        profiles = valid;
+        renderProfiles();
+        document.getElementById('profiles-status').textContent = `Saved ${valid.length} profiles`;
+        showToast('Profiles saved successfully', 'success');
+      }
+    } catch(e) { showToast('Failed to save profiles', 'error'); }
+  }
+
+  // ── CHANGE PIN ──
+  async function changePin() {
+    const current = document.getElementById('current-pin').value;
+    const newPin  = document.getElementById('new-pin').value;
+    const confirm = document.getElementById('confirm-pin').value;
+    const err     = document.getElementById('pin-change-error');
+    err.textContent = '';
+
+    if (newPin !== confirm) { err.textContent = 'New PINs do not match.'; return; }
+    if (newPin.length < 4)  { err.textContent = 'PIN must be at least 4 digits.'; return; }
+
+    try {
+      const res = await fetch('/api/admin/change_pin', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({current_pin: current, new_pin: newPin})
+      });
+      const data = await res.json();
+      if (data.ok) {
+        sessionPin = newPin;
+        document.getElementById('current-pin').value = '';
+        document.getElementById('new-pin').value = '';
+        document.getElementById('confirm-pin').value = '';
+        showToast('PIN updated successfully', 'success');
+      } else {
+        err.textContent = data.error || 'Failed to update PIN.';
+      }
+    } catch(e) { err.textContent = 'Connection error.'; }
+  }
+
+  // ── DELETE HISTORY ──
+  async function deleteHistory() {
+    const pin     = document.getElementById('delete-pin').value;
+    const confirm = document.getElementById('delete-confirm').value.trim();
+    const err     = document.getElementById('delete-error');
+    err.textContent = '';
+
+    if (confirm !== 'DELETE') { err.textContent = 'You must type DELETE exactly.'; return; }
+
+    try {
+      const res = await fetch('/api/admin/delete_history', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({pin, confirm})
+      });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('delete-pin').value = '';
+        document.getElementById('delete-confirm').value = '';
+        lbData = [];
+        renderLeaderboard();
+        showToast('All workout history deleted', 'success');
+      } else {
+        err.textContent = data.error || 'Failed.';
+      }
+    } catch(e) { err.textContent = 'Connection error.'; }
+  }
+
+  // ── EXPORT CSV ──
+  function exportCSV() {
+    window.location.href = `/api/admin/export_csv?pin=${sessionPin}`;
+  }
+
+  // ── UTILS ──
+  function esc(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function showToast(msg, type='success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>

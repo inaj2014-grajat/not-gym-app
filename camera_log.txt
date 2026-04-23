@@ -1,0 +1,2 @@
+Camera thread started
+Landmarker created OK
