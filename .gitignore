@@ -26,3 +26,4 @@ __pycache__/
 *.pyc
 .env
 *.log
+vosk-model-small-en-us/
