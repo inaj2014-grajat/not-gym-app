@@ -631,8 +631,8 @@ def analyse_mountain_climber(lms, w, h, mc_state, rep_count):
 # Rep = both arms up AND feet wide → both arms down AND feet together = 1 rep.
 # Uses a 2-phase state machine: 'closed' and 'open'.
 
-JJ_ARM_THRESH  = 0.04   # wrist must be this much higher than shoulder (normalised y)
-JJ_FEET_THRESH = 0.08   # each ankle must be this much wider than hip (normalised x)
+JJ_ARM_THRESH  = 0.02   # wrist must be this much higher than shoulder (normalised y)
+JJ_FEET_THRESH = 0.04   # each ankle must be this much wider than hip (normalised x)
 
 def analyse_jumping_jack(lms, w, h, jj_state, rep_count):
     """
@@ -652,20 +652,23 @@ def analyse_jumping_jack(lms, w, h, jj_state, rep_count):
     rwx, rwy, _ = lm_px(lms, 16, w, h)   # RIGHT_WRIST
 
     # Arms up: both wrists above their respective shoulders
+    # y increases downward, so wrist above shoulder means lwy < lsy → (lsy - lwy) > 0
     l_arm_up = (lsy - lwy) / h > JJ_ARM_THRESH
     r_arm_up = (rsy - rwy) / h > JJ_ARM_THRESH
     arms_up  = l_arm_up and r_arm_up
 
-    # Feet wide: ankles outside hips
-    l_foot_wide = (lhx - lax) / w > JJ_FEET_THRESH
-    r_foot_wide = (rax - rhx) / w > JJ_FEET_THRESH
+    # Feet wide: ankles further apart than hips.
+    # Use abs() so logic works regardless of whether the feed is mirrored or raw.
+    # Debug showed values of ~0.06 at full spread, so threshold lowered to 0.04.
+    l_foot_wide = abs(lax - lhx) / w > JJ_FEET_THRESH
+    r_foot_wide = abs(rax - rhx) / w > JJ_FEET_THRESH
     feet_wide   = l_foot_wide and r_foot_wide
 
-    # Arms down: wrists below shoulders
+    # Arms down: wrists below shoulders (wrist y > shoulder y in image coords)
     arms_down = (lwy - lsy) / h > 0.02 and (rwy - rsy) / h > 0.02
 
-    # Feet together: ankles close to hips
-    feet_together = (lhx - lax) / w < 0.02 and (rax - rhx) / w < 0.02
+    # Feet together: ankles close to their respective hips (abs handles both sides)
+    feet_together = abs(lax - lhx) / w < 0.08 and abs(rax - rhx) / w < 0.08
 
     new_state = jj_state
     new_reps  = rep_count
@@ -748,6 +751,7 @@ def camera_loop():
     last_rep_time  = None  # only set after first rep — prevents premature timeout
     prev_rep_count = 0
     jj_state       = 'closed'
+    last_hold_tick = time.time()  # wall-clock anchor for plank hold timer
 
     import traceback
     log = open("camera_log.txt", "w", buffering=1)
@@ -771,16 +775,35 @@ def camera_loop():
                     mc_state={'left':'down','right':'down'}
                     last_rep_time=None; prev_rep_count=0
                     jj_state='closed'
+                    last_hold_tick=time.time()
                     state.reset_signal = False
 
             if not running:
-                time.sleep(0.05)
-                # Still capture + encode blank frame so stream doesn't freeze
+                # During "preparing" phase we still want to show the skeleton so the
+                # user can verify their position before the session starts.
+                with state.lock:
+                    cur_status = state.status
+
                 ret, frame = cap.read()
                 if ret:
+                    if cur_status == 'preparing':
+                        # Run pose detection and draw skeleton — no rep/hold tracking
+                        h, w = frame.shape[:2]
+                        now_p  = time.time()
+                        ts_p   = int(now_p * 1000) - start_ms
+                        rgb_p  = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        mp_p   = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_p)
+                        try:
+                            res_p = landmarker.detect_for_video(mp_p, ts_p)
+                            if res_p.pose_landmarks and len(res_p.pose_landmarks) > 0:
+                                draw_skeleton(frame, res_p.pose_landmarks[0], w, h, (80, 200, 120))
+                        except Exception:
+                            pass
                     _, buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
                     with state.lock:
                         state.latest_frame = buf.tobytes()
+                else:
+                    time.sleep(0.05)
                 continue
 
             ret, frame = cap.read()
@@ -995,10 +1018,15 @@ def camera_loop():
                     standing_since = None
 
                 # ── Timer (plank hold) ────────────────────────────────────
+                # Wall-clock based — never assume a fixed fps (MediaPipe
+                # latency makes real fps vary, 1/30-per-frame undercounts).
                 if gf and exercise == 'plank':
-                    if good_form_start is None: good_form_start = now
+                    if good_form_start is None:
+                        good_form_start = now
+                        last_hold_tick  = now
                     if now - good_form_start >= GOOD_FORM_BUFFER:
-                        hold_time += 1/30
+                        hold_time += now - last_hold_tick
+                    last_hold_tick = now
                 else:
                     good_form_start = None
                 best_hold = max(best_hold, hold_time)
@@ -1014,32 +1042,36 @@ def camera_loop():
                         avail=[5,10,15,20,25,30,45,60,90,120]
                         audio.play(min(avail,key=lambda x:abs(x-ms)), priority=True)
 
-                if not gf and issues and not standing:
+                # Generic form-warning audio — squat handles its own below
+                # (previously squat warnings fired here AND in the squat block:
+                # duplicate audio with the wrong plank WAV)
+                if exercise != 'squat' and not gf and issues and not standing:
                     txt, wkey = issues[0]
                     if now - last_issue_t.get(wkey, 0) > ISSUE_COOLDOWN:
                         audio.play(wkey, priority=True)
                         last_issue_t[wkey] = now
 
-                # ── Squat audio events ────────────────────────────────────
-                if exercise == 'squat':
+                # ── Rep-count audio (squat + push-up share the same scheme) ──
+                if exercise in ('squat', 'pushup'):
+                    prefix = 'sq' if exercise == 'squat' else 'pu'
                     # Announce each rep (1-9) then milestones at 5,10,15...
                     prev_reps = getattr(audio, '_prev_reps', 0)
                     if rep_count != prev_reps and rep_count > 0:
                         audio._prev_reps = rep_count
                         # Milestone at multiples of 5
-                        sq_milestones = [5,10,15,20,25,30,40,50]
-                        if rep_count in sq_milestones:
-                            audio.play(f"sq_{rep_count}", priority=True)
+                        rep_milestones = [5,10,15,20,25,30,40,50]
+                        if rep_count in rep_milestones:
+                            audio.play(f"{prefix}_{rep_count}", priority=True)
                         elif rep_count < 10 and rep_count not in [5]:
                             # Count individual reps 1-9
-                            audio.play(f"sq_rep{rep_count}", priority=True)
+                            audio.play(f"{prefix}_rep{rep_count}", priority=True)
 
                     # Squat form warnings
-                    if not gf and issues and not standing:
+                    if exercise == 'squat' and not gf and issues and not standing:
                         txt, wkey = issues[0]
                         sq_warn_map = {
-                            "warn_hips_low": "sq_lean",
-                            "warn_hips_high": "sq_lean",
+                            "warn_hips_low": "sq_lean",    # "Leaning too far forward"
+                            "warn_hips_high": "sq_depth",  # "Go deeper"
                             "sq_lean": "sq_lean",
                             "sq_depth": "sq_depth",
                         }
@@ -1073,11 +1105,14 @@ def camera_loop():
                 state.good_form    = gf
                 state.standing     = standing
                 state.countdown    = countdown
-                state.status       = (
-                    "standing" if standing else
-                    "good"     if gf else
-                    "active"
-                )
+                # Only update status when actually running — never overwrite
+                # preparing / ended / final_countdown set by the control routes
+                if state.status not in ("preparing", "ended", "final_countdown", "idle"):
+                    state.status = (
+                        "standing" if standing else
+                        "good"     if gf else
+                        "active"
+                    )
 
     cap.release()
 
@@ -1246,6 +1281,8 @@ def start():
         state.hold_time      = 0.0
         state.best_hold      = 0.0
         state.rep_count      = 0
+        state.standing       = False   # reset standing so new session never starts paused
+        state.feedback       = ""      # clear stale feedback from previous session
         state.squat_state    = 'up'
         state.pu_state       = 'up'
         state.mc_state       = {'left':'down','right':'down'}
@@ -1269,6 +1306,7 @@ def ready():
 def reset_session():
     with state.lock:
         state.hold_time = 0.0
+        state.rep_count = 0
     audio.flush()
     audio.play("reset")
     return jsonify({"ok": True})
@@ -1302,7 +1340,9 @@ def quit_app():
 
 # ─── HEARTBEAT / AUTO-SHUTDOWN ────────────────────────────────────────────────
 _last_heartbeat = time.time()
-_HEARTBEAT_TIMEOUT = 8   # seconds without a ping before auto-shutdown
+_HEARTBEAT_TIMEOUT = 30  # seconds without a ping before auto-shutdown
+                         # (generous on purpose — short timeouts kill the server
+                         # on browser refresh / brief tab freezes)
 
 @app.route('/api/heartbeat', methods=['POST'])
 def heartbeat():
