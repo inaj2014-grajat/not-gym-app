@@ -216,51 +216,108 @@
   .main{animation:fade-in 0.3s ease both 0.1s} .panel{animation:fade-in 0.3s ease both 0.15s}
   .bottombar{animation:fade-in 0.3s ease both 0.2s}
 
-  /* ── INTRO SPLASH (matches mobile app intro) ─────────────────── */
+  /* ── CINEMATIC INTRO (video montage → logo reveal) ─────────────── */
   .intro-overlay {
-    position:fixed; inset:0; z-index:200; background:var(--bg);
+    /* matches the clips' studio-grey backdrop so heroes melt into the screen */
+    position:fixed; inset:0; z-index:200;
+    background:radial-gradient(ellipse at center, #16181d 0%, #0b0c10 60%, #060708 100%);
     display:flex; align-items:center; justify-content:center; flex-direction:column;
-    transition:opacity 0.5s ease;
+    transition:opacity 0.5s ease; overflow:hidden; cursor:default;
   }
   .intro-overlay.hide { opacity:0; pointer-events:none; }
-  .intro-ring {
-    position:absolute; width:220px; height:220px; border-radius:50%;
-    border:2px solid var(--accent); opacity:0;
-    animation:intro-ring 1.1s ease-out 0.45s both;
+  .intro-video {
+    position:absolute; object-fit:cover; opacity:0; z-index:1;
+    transition:
+      left  0.8s cubic-bezier(0.25,0.9,0.3,1),
+      top   0.8s cubic-bezier(0.25,0.9,0.3,1),
+      width 0.8s cubic-bezier(0.25,0.9,0.3,1),
+      height 0.8s cubic-bezier(0.25,0.9,0.3,1),
+      opacity 0.5s ease,
+      border-radius 0.8s ease;
   }
-  @keyframes intro-ring {
-    0%   { transform:scale(0.4); opacity:0; }
-    25%  { opacity:0.7; }
-    100% { transform:scale(1.7); opacity:0; }
+  .intro-video.hero {
+    z-index:5;
+    /* fade the clip's edges into the backdrop — no visible rectangle seam */
+    -webkit-mask-image:radial-gradient(ellipse 62% 62% at center, #000 55%, transparent 88%);
+    mask-image:radial-gradient(ellipse 62% 62% at center, #000 55%, transparent 88%);
   }
-  .intro-logo {
-    font-family:var(--display); font-size:64px; font-weight:800;
-    letter-spacing:-0.02em; line-height:1;
-    animation:intro-logo 0.55s cubic-bezier(0.18,1.25,0.4,1) both;
+  .intro-video.docked {
+    border-radius:12px; z-index:1; box-shadow:0 8px 30px rgba(0,0,0,0.6);
+    -webkit-mask-image:none; mask-image:none;
   }
-  .intro-logo .not { color:var(--text); }
-  .intro-logo .gym { color:var(--accent); }
+  .intro-veil {
+    position:absolute; inset:0; background:rgba(4,8,12,0); pointer-events:none; z-index:8;
+    transition:background 0.9s ease;
+  }
+  .intro-veil.on { background:rgba(4,8,12,0.62); }
+  .intro-veil.full { background:#0a0a0a; transition:background 1.2s ease; }
+  .intro-statement {
+    position:absolute; top:50%; left:50%; z-index:9; text-align:center;
+    transform:translate(-50%,-50%) scale(0.94); opacity:0;
+    font-family:var(--display); font-weight:800; font-size:clamp(40px, 6.5vw, 84px);
+    letter-spacing:0.12em; text-transform:uppercase; color:var(--text);
+    text-shadow:0 4px 30px rgba(0,0,0,0.8);
+    transition:opacity 0.9s ease, transform 0.9s ease;
+    white-space:nowrap;
+  }
+  .intro-statement.show { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  .intro-statement .you { color:var(--accent); }
+  .intro-brand {
+    position:absolute; inset:0; z-index:10; display:flex;
+    flex-direction:column; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity 0.6s ease;
+  }
+  .intro-brand.show { opacity:1; }
+  .intro-brand.show .intro-logo-img { animation:intro-logo 2.0s ease both; }
+  .intro-brand.show .intro-tagline { animation:intro-tag 1.4s ease 1.1s both; }
+  .intro-logo-img { width:min(40vh, 360px); height:auto; opacity:0; }
   @keyframes intro-logo {
-    from { transform:scale(0.6); opacity:0; }
+    from { transform:scale(1.08); opacity:0; }
     to   { transform:scale(1); opacity:1; }
   }
   .intro-tagline {
-    margin-top:14px; font-size:13px; letter-spacing:0.18em; text-transform:uppercase;
-    color:var(--text2); animation:intro-tag 0.6s ease 0.55s both;
+    margin-top:10px; font-size:13px; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--text2); opacity:0;
   }
   @keyframes intro-tag {
     from { transform:translateY(12px); opacity:0; }
     to   { transform:translateY(0); opacity:1; }
   }
+  .intro-cta {
+    margin-top:34px; font-family:var(--display); font-size:15px; font-weight:600;
+    letter-spacing:0.28em; text-transform:uppercase; color:var(--accent); opacity:0;
+  }
+  .intro-brand.show .intro-cta { animation:intro-tag 0.9s ease 2.2s both, cta-pulse 1.7s ease-in-out 3.2s infinite; }
+  @keyframes cta-pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  .intro-overlay.awaiting { cursor:pointer; }
+  .intro-flash {
+    position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:12;
+    transition:opacity 0.25s ease-out;
+  }
+  .intro-flash.on { opacity:0.85; transition:none; }
+  .intro-skip {
+    position:absolute; bottom:28px; left:50%; transform:translateX(-50%);
+    background:transparent; border:none; color:rgba(255,255,255,0.5);
+    font-family:var(--body); font-size:11px; letter-spacing:0.15em;
+    text-transform:uppercase; cursor:pointer; padding:8px 16px;
+  }
+  .intro-skip:hover { color:var(--accent); }
 </style>
 </head>
 <body>
 
-<!-- INTRO SPLASH -->
+<!-- CINEMATIC INTRO -->
 <div class="intro-overlay" id="introOverlay">
-  <div class="intro-ring"></div>
-  <div class="intro-logo"><span class="not">NOT</span><span class="gym">GYM</span></div>
-  <div class="intro-tagline">Your AI coach. No gym required.</div>
+  <div id="introClips"></div>
+  <div class="intro-veil" id="introVeil"></div>
+  <div class="intro-statement" id="introStatement">All you need is <span class="you">you</span></div>
+  <div class="intro-brand" id="introBrand">
+    <img class="intro-logo-img" src="/static/notgym-logo-dark.png" alt="NotGym">
+    <div class="intro-tagline">Your AI coach. No gym required.</div>
+    <div class="intro-cta">Click anywhere to start</div>
+  </div>
+  <div class="intro-flash" id="introFlash"></div>
+  <button class="intro-skip" onclick="skipIntro()" style="z-index:15">Skip intro</button>
 </div>
 
 <div class="app" id="app">
@@ -497,12 +554,7 @@ let lastGoodForm = true;   // for edge-triggered form-alert counting
 
 // ── INIT ─────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded',()=>{
-  // Intro splash — fade out after the logo/ring/tagline sequence completes
-  setTimeout(()=>{
-    const intro=document.getElementById('introOverlay');
-    intro.classList.add('hide');
-    setTimeout(()=>intro.remove(), 600);
-  }, 1900);
+  runIntro();
   loadProfiles();
   setExercise('pushup');
   document.querySelectorAll('.ex-btn').forEach(btn=>{
@@ -517,6 +569,188 @@ window.addEventListener('DOMContentLoaded',()=>{
   setInterval(sendHeartbeat, 4000); // ← keeps server alive
   sendHeartbeat(); // immediate first ping
 });
+
+// ── CINEMATIC INTRO ───────────────────────────────────────────────
+// Rapid clip flashes (Marvel-style) → white flash → logo reveal.
+// Degrades gracefully: missing videos or blocked audio skip silently.
+const INTRO_CLIPS = [
+  '/static/videos/squat.mp4',
+  '/static/videos/pushup.mp4',
+  '/static/videos/plank.mp4',
+  '/static/videos/mountain-climber.mp4',
+  '/static/videos/jumping-jacks.mp4',
+];
+const HERO_MS = 1800;   // hero hold per clip — matches hit spacing in intro-music.wav
+// Final mosaic slots (viewport %): 3 tiles top row, 2 centered below
+const INTRO_TILES = [
+  { l: 2.0,  t: 3.5, w: 30.5, h: 44 },
+  { l: 34.75,t: 3.5, w: 30.5, h: 44 },
+  { l: 67.5, t: 3.5, w: 30.5, h: 44 },
+  { l: 18.4, t: 51.5,w: 30.5, h: 44 },
+  { l: 51.1, t: 51.5,w: 30.5, h: 44 },
+];
+let introDone = false, introTimers = [];
+const sfxWhoosh = new Audio('/static/sfx/whoosh.wav');
+const sfxImpact = new Audio('/static/sfx/impact.wav');
+const introMusic = new Audio('/static/sfx/intro-music.wav');
+introMusic.volume = 0.9;
+
+function introLater(fn, ms){ introTimers.push(setTimeout(fn, ms)); }
+function playSfx(a){ try{ a.currentTime=0; a.play().catch(()=>{}); }catch(_){} }
+
+// Chrome blocks audio before the first user gesture (unless launched with
+// --autoplay-policy=no-user-gesture-required, which NotGym.bat now does).
+// If blocked, retry the music on the first click/keypress.
+function startMusic(){
+  introMusic.play().catch(()=>{
+    const unlock = ()=>{
+      if(!introDone) introMusic.play().catch(()=>{});
+      document.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('keydown', unlock);
+    };
+    document.addEventListener('pointerdown', unlock);
+    document.addEventListener('keydown', unlock);
+  });
+}
+
+// Position helpers — everything is animated via absolute px rects so each
+// video can glide from its centered "hero" position into its mosaic tile.
+function setRect(v, r){
+  v.style.left = r.l+'px'; v.style.top = r.t+'px';
+  v.style.width = r.w+'px'; v.style.height = r.h+'px';
+}
+function heroRect(v){
+  // Hero shows the clip at its NATIVE aspect ratio — nothing gets cut off.
+  const W = innerWidth, H = innerHeight;
+  const ar = (v.videoWidth && v.videoHeight) ? v.videoWidth / v.videoHeight : 16/9;
+  let h = H * 0.78, w = h * ar;
+  if(w > W * 0.72){ w = W * 0.72; h = w / ar; }
+  return { l:(W-w)/2, t:(H-h)/2, w, h };
+}
+function tileRect(i){
+  const W = innerWidth, H = innerHeight, p = INTRO_TILES[i];
+  return { l:W*p.l/100, t:H*p.t/100, w:W*p.w/100, h:H*p.h/100 };
+}
+
+function runIntro(){
+  const wrap = document.getElementById('introClips');
+
+  // Preload ALL clips as stacked, looping <video> elements
+  const vids = INTRO_CLIPS.map(src=>{
+    const v = document.createElement('video');
+    v.className = 'intro-video';
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.loop = true;
+    v.src = src;
+    wrap.appendChild(v);
+    return v;
+  });
+
+  let started = false;
+
+  const heroize = (v)=>{
+    playSfx(sfxWhoosh);
+    flash();
+    const hr = heroRect(v);
+    // enter slightly larger, then settle — gives the "starts big" feel
+    const scale = 1.1;
+    setRect(v, { l:hr.l-(hr.w*(scale-1))/2, t:hr.t-(hr.h*(scale-1))/2, w:hr.w*scale, h:hr.h*scale });
+    v.classList.add('hero');
+    void v.offsetWidth;              // commit start rect before transitioning
+    setRect(v, hr);
+    v.style.opacity = 1;
+    v.play().catch(()=>{});
+  };
+
+  const dock = (v, i)=>{
+    v.classList.remove('hero');
+    v.classList.add('docked');
+    setRect(v, tileRect(i));         // keeps playing inside its tile
+    // Dim docked tiles while the assembly runs so they don't read as
+    // "background bleed" behind the hero's faded edges — all tiles
+    // brighten together at the grid moment.
+    v.style.opacity = 0.3;
+  };
+
+  const begin = ()=>{
+    if(started || introDone) return;
+    started = true;
+    startMusic();
+    let i = 0;
+    const step = ()=>{
+      if(introDone) return;
+      if(i > 0) dock(vids[i-1], i-1);
+      if(i >= vids.length){
+        introLater(gridMoment, 500); // let the last dock finish
+        return;
+      }
+      if(vids[i].dataset.bad){ i++; step(); return; }
+      heroize(vids[i]);
+      i++;
+      introLater(step, HERO_MS);
+    };
+    step();
+  };
+
+  let errorCount = 0;
+  vids.forEach((v, idx)=>{
+    v.addEventListener('loadeddata', ()=>{ if(idx === 0) begin(); }, {once:true});
+    v.addEventListener('error', ()=>{
+      v.dataset.bad = '1';
+      errorCount++;
+      if(errorCount >= vids.length){ startMusic(); logoPhase(); }
+      else if(idx === 0) begin();
+    }, {once:true});
+  });
+  // Hard fallback if nothing loads in time
+  introLater(()=>{ if(!started && !introDone){ startMusic(); logoPhase(); } }, 2500);
+}
+
+// All five tiles alive → brighten the mosaic + veil + "All you need is you"
+function gridMoment(){
+  if(introDone) return;
+  playSfx(sfxImpact);
+  document.querySelectorAll('#introClips .intro-video.docked')
+    .forEach(v=>{ v.style.opacity = 1; });
+  document.getElementById('introVeil').classList.add('on');
+  document.getElementById('introStatement').classList.add('show');
+  introLater(logoPhase, 2600);
+}
+
+// Fade everything to black, logo appears slowly, then wait for the user
+function logoPhase(){
+  if(introDone) return;
+  const veil = document.getElementById('introVeil');
+  veil.classList.add('on'); veil.classList.add('full');
+  document.getElementById('introStatement').classList.remove('show');
+  introLater(()=>{
+    document.getElementById('introBrand').classList.add('show');
+  }, 700);
+  // "Click anywhere to start" — no auto-dismiss; user enters the app themselves
+  introLater(()=>{
+    const ov = document.getElementById('introOverlay');
+    ov.classList.add('awaiting');
+    ov.addEventListener('click', endIntro, { once:true });
+    document.addEventListener('keydown', endIntro, { once:true });
+  }, 2400);
+}
+
+function flash(){
+  const f = document.getElementById('introFlash');
+  f.classList.add('on');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>f.classList.remove('on')));
+}
+
+function endIntro(){
+  if(introDone) return;
+  introDone = true;
+  introTimers.forEach(clearTimeout);
+  try{ introMusic.pause(); }catch(_){}
+  const intro = document.getElementById('introOverlay');
+  intro.classList.add('hide');
+  setTimeout(()=>intro.remove(), 600);
+}
+
+function skipIntro(){ introTimers.forEach(clearTimeout); endIntro(); }
 
 // ── HEARTBEAT — critical, prevents auto-shutdown ──────────────────
 function sendHeartbeat(){
