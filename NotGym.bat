@@ -48,8 +48,21 @@ REM Wait for server and mediapipe to load
 echo  Loading AI models, please wait...
 timeout /t 7 /nobreak >nul
 
-REM Open browser
-start http://localhost:5000
+REM Open browser — prefer Chrome/Edge with autoplay allowed so the
+REM cinematic intro plays its music without needing a click first
+set CHROME=
+if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set CHROME=%ProgramFiles%\Google\Chrome\Application\chrome.exe
+if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set CHROME=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe
+REM --user-data-dir forces a FRESH browser process: command-line flags are
+REM ignored when Chrome/Edge is already running, which silently kills the
+REM intro music. A dedicated profile guarantees the autoplay flag applies.
+if defined CHROME (
+    start "" "%CHROME%" --autoplay-policy=no-user-gesture-required --user-data-dir=%TEMP%\notgym-browser --no-first-run --app=http://localhost:5000
+) else if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" (
+    start "" "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" --autoplay-policy=no-user-gesture-required --user-data-dir=%TEMP%\notgym-browser --no-first-run --app=http://localhost:5000
+) else (
+    start http://localhost:5000
+)
 
 echo.
 echo  NotGym is running at http://localhost:5000
